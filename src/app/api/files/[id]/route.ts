@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const ext = id.includes('.') ? id.split('.').pop()?.toLowerCase() : undefined;
     const contentType = (ext && MIME_TYPES[ext]) || 'application/octet-stream';
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': contentType,
