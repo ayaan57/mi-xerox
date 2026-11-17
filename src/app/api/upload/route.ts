@@ -65,7 +65,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const id = crypto.randomUUID();
+      // Preserve file extension in the ID so the file-serving route can infer MIME type
+      const ext = entry.name.includes('.') ? entry.name.split('.').pop()?.toLowerCase() : '';
+      const id = ext ? `${crypto.randomUUID()}.${ext}` : crypto.randomUUID();
       const buffer = Buffer.from(await entry.arrayBuffer());
       storeFile(id, buffer);
 

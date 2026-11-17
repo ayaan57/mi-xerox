@@ -113,6 +113,40 @@ export default function AdminPage() {
     }
   };
 
+  // ── Print files helper — opens each file in a new tab and triggers print dialog ──
+
+  const startPrintingOrder = async (order: Order) => {
+    const actionKey = `print-${order.code}`;
+    setLoading(actionKey, true);
+    try {
+      // Open each file in a new window and trigger print
+      for (const file of order.files) {
+        const fileUrl = `/api/files/${file.id}`;
+        const printWindow = window.open(fileUrl, '_blank');
+        if (printWindow) {
+          printWindow.addEventListener('load', () => {
+            setTimeout(() => {
+              printWindow.print();
+            }, 500);
+          });
+        }
+      }
+      // Update order status to printing
+      const res = await fetch(`/api/orders/${order.code}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: 'printing' }),
+      });
+      if (!res.ok) throw new Error('Update failed');
+      await fetchOrders();
+      showToast(`${order.code} → Printing`);
+    } catch {
+      showToast('Action failed. Please try again.', 'error');
+    } finally {
+      setLoading(actionKey, false);
+    }
+  };
+
   const deleteOrder = async (code: string) => {
     const actionKey = `delete-${code}`;
     setLoading(actionKey, true);
@@ -318,9 +352,7 @@ export default function AdminPage() {
                     loadingActions={loadingActions}
                     isSelected={selectedOrder?.id === order.id}
                     onSelect={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-                    onStartPrinting={() =>
-                      patchOrder(order.code, { orderStatus: 'printing' }, `print-${order.code}`, `${order.code} → Printing`)
-                    }
+                    onStartPrinting={() => startPrintingOrder(order)}
                     onMarkCompleted={() =>
                       patchOrder(order.code, { orderStatus: 'completed' }, `complete-${order.code}`, `${order.code} → Completed`)
                     }
@@ -550,12 +582,22 @@ function OrderCard({
         )}
 
         {order.orderStatus === 'completed' && (
-          <GlassButton
-            label="🗑️ Delete"
-            loading={!!loadingActions[`delete-${order.code}`]}
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            variant="red"
-          />
+          <>
+            {order.paymentStatus === 'pending' && (
+              <GlassButton
+                label="💰 Mark Paid"
+                loading={!!loadingActions[`pay-${order.code}`]}
+                onClick={(e) => { e.stopPropagation(); onMarkPaid(); }}
+                variant="green"
+              />
+            )}
+            <GlassButton
+              label="🗑️ Delete"
+              loading={!!loadingActions[`delete-${order.code}`]}
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              variant="red"
+            />
+          </>
         )}
       </div>
     </div>
